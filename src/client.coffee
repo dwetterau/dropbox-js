@@ -1095,6 +1095,41 @@ class Dropbox.Client
   delta: (cursor, callback) ->
     @pullChanges cursor, callback
 
+  # Fetches the latest cursor of a user's Dropbox.
+  #
+  # This method is useful when an application only needs to know about new
+  # files and modifications and doesn't need to know about files that already
+  # exist in Dropbox.
+  #
+  # @param {Object} options (optional) one or more of the options below
+  # @option options {String} pathPrefix if present, the returned cursor will
+  #   be encoded with a path_prefix for the specified path to use with
+  #   pullChanges or pollForChanges
+  # @option options {Boolean} includeMediaInfo if present, the returned cursor
+  #   will be encoded with include_media_info set to true for use with
+  #   pullChanges
+  # @param {function(Dropbox.ApiError, Dropbox.Http.PulledChanges)} callback
+  #   called with the results of the /delta/latest_cursor HTTP request; if the
+  #   call succeeds, the second parameter is a {Dropbox.Http.PulledChanges}
+  #   with the cursor populated and an empty changes array.
+  # @return {XMLHttpRequest} the XHR object used for this API call
+  latestCursor: (options, callback) ->
+    if (not callback) and (typeof options is 'function')
+      callback = options
+      options = null
+
+    params = {}
+    if options
+      if options.pathPrefix?
+        params.path_prefix = options.pathPrefix
+      if options.includeMediaInfo?
+        params.include_media_info = options.includeMediaInfo
+
+    xhr = new Dropbox.Util.Xhr 'POST', @_urls.latestCursor
+    xhr.setParams(params).signWithOauth @_oauth
+    @_dispatchXhr xhr, (error, new_cursor) ->
+      callback error, Dropbox.Http.PulledChanges.parse(new_cursor)
+
   # Checks whether changes have occurred in a user's Dropbox.
   #
   # This method can be used together with {Dropbox.Client#pullChanges} to react
@@ -1402,6 +1437,7 @@ class Dropbox.Client
       putFile: "#{@_fileServer}/1/files_put/auto"
       metadata: "#{@_apiServer}/1/metadata/auto"
       delta: "#{@_apiServer}/1/delta"
+      latestCursor: "#{@_apiServer}/1/delta/latest_cursor"
       longpollDelta: "#{@_notifyServer}/1/longpoll_delta"
       revisions: "#{@_apiServer}/1/revisions/auto"
       restore: "#{@_apiServer}/1/restore/auto"

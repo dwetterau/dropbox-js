@@ -1522,6 +1522,49 @@ buildClientTests = (clientKeys) ->
             expect(error.status).to.equal Dropbox.ApiError.INVALID_PARAM
             done()
 
+  describe '#latestCursor', ->
+    describe 'with valid args', ->
+      verifyEmpty = (changes) ->
+        expect(changes).to.be.instanceOf Dropbox.Http.PulledChanges
+        expect(changes.changes).to.be.empty
+        expect(changes.cursorTag).to.be.not.empty
+
+      it 'should return a cursor that works with no options', (done) ->
+        @client.latestCursor (error, changes) =>
+          expect(error).to.be.null
+          verifyEmpty changes
+
+          # Make a request to pullChanges to make sure the cursor is valid.
+          # There also should not be any changes if this was the latest cursor.
+          @client.pullChanges changes, (error, changes) ->
+            expect(error).to.be.null
+            verifyEmpty changes
+            # Also make sure the result of a real pullChanges call says we
+            # should not pull again.
+            expect(changes.shouldPullAgain).to.be.false
+            done()
+
+      it 'should return a cursor with all options set', (done) ->
+        options = {pathPrefix: @testFolder, includeMediaInfo: true}
+        @client.latestCursor options, (error, changes) =>
+          expect(error).to.be.null
+          verifyEmpty changes
+          # Note that we can't verify this cursor right now because we can't
+          # pass (the same) options into pullChanges
+          # TODO: Make sure the cursor works
+          done()
+
+    describe 'with invalid options', ->
+      it 'returns an error', (done) ->
+        options = {includeMediaInfo: 'bad_value'}
+        @client.latestCursor options, (error, changes) =>
+          expect(changes).not.to.be.ok
+          expect(error).to.be.instanceOf Dropbox.ApiError
+          unless Dropbox.Util.Xhr.ieXdr  # IE's XDR doesn't do status codes.
+            expect(error).to.have.property 'status'
+            expect(error.status).to.equal Dropbox.ApiError.INVALID_PARAM
+            done()
+
   describe '#pollForChanges', ->
     describe 'with a valid cursor', ->
       beforeEach (done) ->

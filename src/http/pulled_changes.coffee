@@ -58,7 +58,7 @@ class Dropbox.Http.PulledChanges
     @cursorTag = deltaInfo.cursor
     @shouldPullAgain = deltaInfo.has_more
     @shouldBackOff = not @shouldPullAgain
-    if deltaInfo.cursor and deltaInfo.cursor.length
+    if deltaInfo.cursor and deltaInfo.cursor.length and deltaInfo.entries
       @changes = for entry in deltaInfo.entries
         Dropbox.Http.PulledChange.parse entry
     else
